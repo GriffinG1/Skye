@@ -8,13 +8,14 @@ class Warning(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         try:
-            with open("saves/warns.json", "r") as file:
+            with open("data/warns.json", "r") as file:
                 self.warns_dict = json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError):
-            print("No warns file found, or file was corrupt. Not loading warns.py")
+        except (FileNotFoundError, json.JSONDecodeError) as exception:
+            print(f"No warns file found, or file was corrupt. Not loading warns.py\n{exception}")
             for command in self.get_commands():
                 command.enabled = False
-        print(f'Addon "{self.__class__.__name__}" loaded')
+        else:
+            print(f'Loaded {self.__class__.__name__} cog with {len(self.warns_dict)} entries.')
 
     @commands.command()
     @commands.has_permissions(kick_members=True)
@@ -60,7 +61,7 @@ class Warning(commands.Cog):
                 await target.send(dm_msg)
         except discord.Forbidden:
             embed.description += "\n**Could not DM user.**"
-        with open("saves/warns.json", "w") as file:
+        with open("data/warns.json", "w") as file:
             json.dump(self.bot.warns_dict, file, indent=4)
         if len(warns) >= 5:
             await target.ban(reason=f"Warn #{len(warns)}", delete_message_days=0)
@@ -95,7 +96,7 @@ class Warning(commands.Cog):
                 self.warns_dict[str(target.id)].remove(warn)
             except ValueError:
                 return await ctx.send(f"{target} doesn't have a warn matching `{warn}`.")
-        with open("saves/warns.json", "w") as file:
+        with open("data/warns.json", "w") as file:
             json.dump(self.warns_dict, file, indent=4)
         await ctx.send(f"Removed warn from {target}.")
         warns_count = len(self.warns_dict[str(target.id)])
@@ -144,7 +145,7 @@ class Warning(commands.Cog):
         except KeyError:
             return await ctx.send(f"{target} already has no warns.")
         await ctx.send(f"Cleared warns for {target}.")
-        with open("saves/warns.json", "w") as file:
+        with open("data/warns.json", "w") as file:
             json.dump(self.warns_dict, file, indent=4)
         embed = discord.Embed(title=f"Warns for {target} cleared")
         embed.description = f"{target} | {target.id} had their warns cleared by {ctx.author}. Warns can be found below."
