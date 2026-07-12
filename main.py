@@ -121,6 +121,7 @@ cogs = [
     "cogs.events",
     "cogs.misc",
     "cogs.mod",
+    "cogs.utility",
     "cogs.warns",
 ]
 
@@ -178,6 +179,7 @@ async def reload(ctx, cog=None):
             "Events": "events",
             "Misc": "misc",
             "Moderation": "mod",
+            "Utility": "utility",
             "Warning": "warns",
         }
         loaded_cogs = bot.cogs.copy()
