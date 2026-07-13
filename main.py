@@ -6,6 +6,7 @@ import psutil
 import traceback
 import asyncio
 import sys
+import platform
 import urllib.request
 import config_handler
 from datetime import datetime
@@ -111,6 +112,14 @@ def iterate_config_dict(parent_key, config_dict):
             setattr(bot, key, discord.utils.get(bot.guild.channels, id=value))
         elif parent_key == "roles":
             setattr(bot, key, discord.utils.get(bot.guild.roles, id=value))
+
+
+def is_running_in_wsl():
+    if os.getenv("WSL_DISTRO_NAME") or os.getenv("WSL_INTEROP"):
+        return True
+    release = platform.release().lower()
+    version = platform.version().lower()
+    return "microsoft" in release or "wsl" in release or "microsoft" in version or "wsl" in version
 
 
 def fetch_new_commits(last_commit):
@@ -285,7 +294,7 @@ async def about(ctx):
                          f"Written and maintained by {bot.creator.mention}.")
     embed.set_author(name="GriffinG1", url='https://github.com/GriffinG1', icon_url='https://avatars0.githubusercontent.com/u/28538707')
     total_mem_bytes = psutil.virtual_memory().total
-    if os.getenv("WSL_DISTRO_NAME"):
+    if is_running_in_wsl():
         total_mem_bytes = min(total_mem_bytes, int(1.5 * (1 << 30)))
     total_mem = total_mem_bytes / float(1 << 30)
     used_mem = psutil.Process().memory_info().rss / float(1 << 20)
