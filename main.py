@@ -6,6 +6,7 @@ import psutil
 import traceback
 import asyncio
 import sys
+import urllib.request
 import config_handler
 from datetime import datetime
 from discord.ext import commands
@@ -40,11 +41,16 @@ bot.ready = False
 bot.is_beta = config.is_beta
 
 restart_channel_id = None
-if len(sys.argv) > 2 and sys.argv[1] == "restart":
+restart_last_commit = None
+restart_mode = None
+if len(sys.argv) > 2 and sys.argv[1] in ("restart", "gitpull"):
+    restart_mode = sys.argv[1]
     try:
         restart_channel_id = int(sys.argv[2])
     except ValueError:
         restart_channel_id = None
+    if restart_mode == "gitpull" and len(sys.argv) > 3:
+        restart_last_commit = sys.argv[3]
 
 
 @bot.check
@@ -107,9 +113,27 @@ def iterate_config_dict(parent_key, config_dict):
             setattr(bot, key, discord.utils.get(bot.guild.roles, id=value))
 
 
+def fetch_new_commits(last_commit):
+    request = urllib.request.Request("https://api.github.com/repos/GriffinG1/Skye/commits", headers={"User-Agent": "SkyeBot"},)
+    with urllib.request.urlopen(request, timeout=10) as response:
+        commits = json.load(response)
+    commit_data = []
+    for commit in commits:
+        if last_commit == commit.get("sha"):
+            break
+        commit_data.append({
+            "author": commit["commit"]["author"]["name"],
+            "date": datetime.strptime(commit["commit"]["author"]["date"], "%Y-%m-%dT%H:%M:%SZ"),
+            "message": commit["commit"]["message"],
+            "sha": commit["sha"],
+            "url": commit["html_url"],
+        })
+    return commit_data
+
+
 @bot.event
 async def on_ready():
-    global restart_channel_id
+    global restart_channel_id, restart_last_commit, restart_mode
     for guild_data_attrib in config.guild_data.items():
         if type(guild_data_attrib[1]) is dict:
             iterate_config_dict(guild_data_attrib[0], guild_data_attrib[1])
@@ -127,6 +151,22 @@ async def on_ready():
         restart_channel_id = None
         if channel is not None:
             await channel.send("Restarted!")
+            if restart_mode == "gitpull" and restart_last_commit and not bot.is_beta:
+                try:
+                    commit_data = await asyncio.to_thread(fetch_new_commits, restart_last_commit)
+                except Exception:
+                    commit_data = []
+                if len(commit_data) > 0:
+                    embed = discord.Embed(title=f"New commit{'s' if len(commit_data) > 1 else ''} merged!", description="")
+                    for commit in commit_data:
+                        line_break = commit["message"].find("\n")
+                        message = commit["message"][:line_break] if line_break != -1 else commit["message"]
+                        embed.description += f"**[{commit['sha'][:7]}]({commit['url']})** - **{commit['author']}** - {discord.utils.format_dt(commit['date'])}\n```{message}```\n"
+                    if len(embed.description) > 4096:
+                        embed.description = f"{embed.description[:4093]}..."
+                    await channel.send(embed=embed)
+        restart_last_commit = None
+        restart_mode = None
 
     bot.creator = await bot.fetch_user(177939404243992578)
 

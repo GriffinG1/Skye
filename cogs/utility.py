@@ -51,7 +51,11 @@ class Utility(commands.Cog):
     @commands.is_owner()
     async def gitpull(self, ctx):
         message = await ctx.send("Pulling from git...")
+        pre_head = ""
         try:
+            pre_head_proc = await asyncio.create_subprocess_exec("git", "rev-parse", "HEAD", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            pre_head_stdout, _ = await asyncio.wait_for(pre_head_proc.communicate(), timeout=10)
+            pre_head = pre_head_stdout.decode("utf-8", errors="replace").strip()
             proc = await asyncio.create_subprocess_exec("git", "pull", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
         except asyncio.TimeoutError:
@@ -65,7 +69,10 @@ class Utility(commands.Cog):
         if resp.startswith("Already up to date."):
             return await message.edit(content=f"```{short_resp}```")
         await message.edit(content=f"Commits pulled! Restarting...\n```{short_resp}```")
-        os.execv(sys.executable, [sys.executable, os.path.abspath(sys.argv[0]), "restart", str(ctx.channel.id)])
+        restart_args = [sys.executable, os.path.abspath(sys.argv[0]), "gitpull", str(ctx.channel.id)]
+        if pre_head:
+            restart_args.append(pre_head)
+        os.execv(sys.executable, restart_args)
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Utility(bot))
