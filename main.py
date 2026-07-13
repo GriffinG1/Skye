@@ -39,6 +39,13 @@ bot = commands.Bot(command_prefix=prefix, description=description, intents=inten
 bot.ready = False
 bot.is_beta = config.is_beta
 
+restart_channel_id = None
+if len(sys.argv) > 2 and sys.argv[1] == "restart":
+    try:
+        restart_channel_id = int(sys.argv[2])
+    except ValueError:
+        restart_channel_id = None
+
 
 @bot.check
 async def globally_block_dms(ctx):
@@ -78,8 +85,9 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_error(event_method, *args, **kwargs):
-    print(args[0])
-    if isinstance(args[0], commands.errors.CommandNotFound):
+    first_arg = args[0] if args else None
+    print(first_arg)
+    if isinstance(first_arg, commands.errors.CommandNotFound):
         return
     print(f"Ignoring exception in {event_method}")
     tb = traceback.format_exc()
@@ -101,6 +109,7 @@ def iterate_config_dict(parent_key, config_dict):
 
 @bot.event
 async def on_ready():
+    global restart_channel_id
     for guild_data_attrib in config.guild_data.items():
         if type(guild_data_attrib[1]) is dict:
             iterate_config_dict(guild_data_attrib[0], guild_data_attrib[1])
@@ -108,9 +117,16 @@ async def on_ready():
             bot.guild = bot.get_guild(guild_data_attrib[1])
         else:
             setattr(bot, guild_data_attrib[0], guild_data_attrib[1])  # catch anything else, and figure it out later
-    if len(sys.argv) > 1 and sys.argv[1] == "restart":
-        channel = bot.get_channel(int(sys.argv[2]))
-        await channel.send("Restarted!")
+    if restart_channel_id is not None:
+        channel = bot.get_channel(restart_channel_id)
+        if channel is None:
+            try:
+                channel = await bot.fetch_channel(restart_channel_id)
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                channel = None
+        restart_channel_id = None
+        if channel is not None:
+            await channel.send("Restarted!")
 
     bot.creator = await bot.fetch_user(177939404243992578)
 
@@ -212,23 +228,12 @@ async def ping(ctx):
 
 
 @bot.command()
-async def shutdown(ctx):
-    """Restarts the bot."""
-    if ctx.author != bot.creator:
-        raise commands.CheckFailure()
-    await ctx.send("Shutting down...")
-    await bot.close()
-
-
-@bot.command()
 async def restart(ctx):
     """Reloads the bot."""
     if ctx.author != bot.creator:
         raise commands.CheckFailure()
     await ctx.send("Restarting bot...")
-    print()
-    os.system(f"main.py restart {ctx.channel.id}")
-    await bot.close()
+    os.execv(sys.executable, [sys.executable, os.path.abspath(sys.argv[0]), "restart", str(ctx.channel.id)])
 
 
 @bot.command()
