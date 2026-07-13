@@ -224,7 +224,7 @@ async def ping(ctx):
     """Get time between HEARTBEAT and HEARTBEAT_ACK in ms."""
     ping = bot.latency * 1000
     ping = round(ping, 3)
-    await ctx.send(f"🏓 Pong! `{ping}ms`")
+    await ctx.send(f"\U0001F3D3\ufe0e Pong! `{ping}ms`")
 
 
 @bot.command()
@@ -244,7 +244,10 @@ async def about(ctx):
                          "You can view the source code [here](https://github.com/GriffinG1/Skye).\n"
                          f"Written and maintained by {bot.creator.mention}.")
     embed.set_author(name="GriffinG1", url='https://github.com/GriffinG1', icon_url='https://avatars0.githubusercontent.com/u/28538707')
-    total_mem = psutil.virtual_memory().total / float(1 << 30)
+    total_mem_bytes = psutil.virtual_memory().total
+    if os.getenv("WSL_DISTRO_NAME"):
+        total_mem_bytes = min(total_mem_bytes, int(1.5 * (1 << 30)))
+    total_mem = total_mem_bytes / float(1 << 30)
     used_mem = psutil.Process().memory_info().rss / float(1 << 20)
     embed.set_footer(text=f"{round(used_mem, 2)} MB used out of {round(total_mem, 2)} GB")
     await ctx.send(embed=embed)
