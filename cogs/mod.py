@@ -23,6 +23,8 @@ class Moderation(commands.Cog):
         else:
             embed = discord.Embed(title=f"{member} kicked")
             embed.description = f"{member} was kicked by {ctx.message.author} for:\n\n{reason}"
+            if len(embed.description) > 4096:
+                embed.description = f"{embed.description[:4093]}..."
             try:
                 if has_attch:
                     img_bytes = await ctx.message.attachments[0].read()
@@ -48,12 +50,9 @@ class Moderation(commands.Cog):
         has_attch = bool(ctx.message.attachments)
         if user.id == ctx.message.author.id:
             return await ctx.send("You can't ban yourself, obviously")
-        try:
-            member_guild = ctx.guild.get_member(user.id)
-            if ctx.author.top_role.position < member_guild.top_role.position + 1:
-                return await ctx.send("That person has a role higher than or equal to yours, you can't ban them.")
-        except AttributeError:
-            pass  # Happens when banning via id, as they have no roles if not on guild
+        member_guild = ctx.guild.get_member(user.id)
+        if member_guild and ctx.author.top_role.position < member_guild.top_role.position + 1:
+            return await ctx.send("That person has a role higher than or equal to yours, you can't ban them.")
         try:
             if has_attch:
                 img_bytes = await ctx.message.attachments[0].read()
@@ -67,6 +66,8 @@ class Moderation(commands.Cog):
             pass  # bot couldn't send due to some other reason - bot accounts?
         embed = discord.Embed(title=f"{user} banned")
         embed.description = f"{user} was banned by {ctx.author} for:\n\n`{reason}`"
+        if len(embed.description) > 4096:
+            embed.description = f"{embed.description[:4093]}..."
         if has_attch:
             ban_img = discord.File(io.BytesIO(img_bytes), 'ban_image.png')
             embed.set_thumbnail(url="attachment://ban_image.png")
@@ -91,8 +92,9 @@ class Moderation(commands.Cog):
     @commands.has_permissions(ban_members=True)
     async def banid(self, ctx, user: int, *, reason="No reason provided."):
         """Ban a user with their user ID, for use when a user is not in the global User cache."""
-        user = await self.bot.fetch_user(user)
-        if not user:
+        try:
+            user = await self.bot.fetch_user(user)
+        except (discord.NotFound, discord.HTTPException):
             return await ctx.send("This is not a valid discord user.")
         await self.generic_ban_things(ctx, user, reason)
 
@@ -136,7 +138,10 @@ class Moderation(commands.Cog):
         embed.add_field(name="Member", value=f"{member.mention} ({member.id})")
         embed.add_field(name="Timed out by", value=ctx.author)
         embed.add_field(name="Timed out until", value=end_str, inline=False)
-        embed.add_field(name="Reason", value=reason)
+        log_reason = reason
+        if len(log_reason) > 1024:
+            log_reason = f"{log_reason[:1021]}..."
+        embed.add_field(name="Reason", value=log_reason)
         await self.bot.mod_logs_channel.send(embed=embed)
         await member.timeout(diff - timedelta(seconds=1), reason=reason)  # Reduce diff by 1 second due to communication_disabled_until when it's *exactly* 28 days
         await ctx.send(f"Successfully timed out {member} until {end_str}!{cap_msg}")
@@ -152,7 +157,10 @@ class Moderation(commands.Cog):
         embed = discord.Embed(title="Message Sent")
         embed.add_field(name="Author", value=f"{ctx.author} ({ctx.author.mention})")
         embed.add_field(name="Channel", value=channel.mention)
-        embed.add_field(name="Message", value=message, inline=False)
+        log_msg = message
+        if len(log_msg) > 1024:
+            log_msg = f"{log_msg[:1021]}..."
+        embed.add_field(name="Message", value=log_msg, inline=False)
         await self.bot.mod_logs_channel.send(embed=embed)
         await ctx.send(f"Message sent to {channel.mention}!")
 
@@ -167,7 +175,10 @@ class Moderation(commands.Cog):
         embed = discord.Embed(title="Message Sent")
         embed.add_field(name="Author", value=f"{ctx.author} ({ctx.author.mention})")
         embed.add_field(name="Target", value=target.mention)
-        embed.add_field(name="Message", value=message, inline=False)
+        log_msg = message
+        if len(log_msg) > 1024:
+            log_msg = f"{log_msg[:1021]}..."
+        embed.add_field(name="Message", value=log_msg, inline=False)
         await self.bot.mod_logs_channel.send(embed=embed)
         await ctx.send(f"Message sent to {target.mention}!")
 

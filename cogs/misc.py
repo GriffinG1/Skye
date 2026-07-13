@@ -18,7 +18,7 @@ class Misc(commands.Cog):
         await ctx.send(f"✅ Successfully stole {len(new_emotes)} emote(s).\n{', '.join([str(emote) for emote in new_emotes])}")
 
     @commands.command(aliases=['ui', 'user'])
-    async def userinfo(self, ctx, user: discord.Member = None, depth=False):
+    async def userinfo(self, ctx, user: discord.Member = None, depth: bool = False):
         """Pulls a user's info. Passing no member returns your own. depth is a bool that will specify account creation and join date, and account age"""
         if not user:
             user = ctx.author
@@ -44,12 +44,18 @@ class Misc(commands.Cog):
         if depth:
             embed.add_field(name=u"\u200B", value=u"\u200B", inline=False)
             if len(user.roles) > 1:
-                embed.add_field(name="Roles", value=f"`{'`, `'.join(role.name for role in user.roles[1:])}`")
+                roles_text = f"`{'`, `'.join(role.name for role in user.roles[1:])}`"
+                if len(roles_text) > 1024:
+                    roles_text = f"{roles_text[:1021]}..."
+                embed.add_field(name="Roles", value=roles_text)
             if len(user.activities) > 0:
-                embed.add_field(name="Activities" if len(user.activities) > 1 else "Activity", value=f"`{'`, `'.join(str(activity.name) for activity in user.activities)}`", inline=False)
+                activities_text = f"`{'`, `'.join(str(activity.name) for activity in user.activities)}`"
+                if len(activities_text) > 1024:
+                    activities_text = f"{activities_text[:1021]}..."
+                embed.add_field(name="Activities" if len(user.activities) > 1 else "Activity", value=activities_text, inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command(aliases=['fui'])
+    @commands.command(aliases=['fui'], hidden=True)
     async def fetch_userinfo(self, ctx, user: discord.User):
         """Pulls a discord.User instead of discord.Member. More limited than userinfo"""
         embed = discord.Embed(colour=user.colour)
@@ -59,13 +65,21 @@ class Misc(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(aliases=['si', 'guild', 'gi', 'server', 'serverinfo'])
-    async def guildinfo(self, ctx, depth=False):
+    async def guildinfo(self, ctx, depth: bool = False):
+        member_count = 0
+        bot_count = 0
+        for member in ctx.guild.members:
+            if member.bot:
+                bot_count += 1
+            else:
+                member_count += 1
+        non_category_channel_count = sum(1 for channel in ctx.guild.channels if not isinstance(channel, discord.CategoryChannel))
         embed = discord.Embed()
         embed.set_author(name=f"Guild info for {ctx.guild.name} ({ctx.guild.id})", icon_url=str(ctx.guild.icon))
         embed.add_field(name="Guild Owner", value=f"{ctx.guild.owner} ({ctx.guild.owner.mention})")
         embed.add_field(name="Highest Role", value=f"{ctx.guild.roles[-1].name} ({ctx.guild.roles[-1].id})")
-        embed.add_field(name="Member Count", value=f"{len([member for member in ctx.guild.members if not member.bot])} members, {len([member for member in ctx.guild.members if member.bot])} bots\n({ctx.guild.member_count} total)")
-        embed.add_field(name="Channel Count", value=f"{len([channel for channel in ctx.guild.channels if not isinstance(channel, discord.CategoryChannel)])} channels in {len(ctx.guild.categories)} categories\n({len(ctx.guild.text_channels)} text, {len(ctx.guild.voice_channels)} voice)")
+        embed.add_field(name="Member Count", value=f"{member_count} members, {bot_count} bots\n({ctx.guild.member_count} total)")
+        embed.add_field(name="Channel Count", value=f"{non_category_channel_count} channels in {len(ctx.guild.categories)} categories\n({len(ctx.guild.text_channels)} text, {len(ctx.guild.voice_channels)} voice)")
         embed.add_field(name="Emoji Slots", value=f"{len(ctx.guild.emojis)}/{ctx.guild.emoji_limit} slots used")
         embed.add_field(name="Role Count", value=str(len(ctx.guild.roles)))
         if depth:

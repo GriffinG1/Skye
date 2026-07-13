@@ -224,7 +224,7 @@ async def ping(ctx):
     """Get time between HEARTBEAT and HEARTBEAT_ACK in ms."""
     ping = bot.latency * 1000
     ping = round(ping, 3)
-    await ctx.send(f" Pong! `{ping}ms`")
+    await ctx.send(f"🏓 Pong! `{ping}ms`")
 
 
 @bot.command()

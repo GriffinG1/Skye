@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from datetime import datetime
 import asyncio
 
 
@@ -24,7 +23,7 @@ class Events(commands.Cog):
         embed = discord.Embed(title="Member Left", colour=discord.Colour.red())
         embed.add_field(name="Member", value=f"{member.mention} | {member}", inline=False)
         embed.add_field(name="Joined At", value=discord.utils.format_dt(member.joined_at, style="F"), inline=False)
-        embed.add_field(name="Left At", value=discord.utils.format_dt(datetime.now(), style="F"), inline=False)
+        embed.add_field(name="Left At", value=discord.utils.format_dt(discord.utils.utcnow(), style="F"), inline=False)
         await self.bot.join_logs_channel.send(embed=embed)
 
     @commands.Cog.listener()
@@ -39,7 +38,7 @@ class Events(commands.Cog):
         # Log bans
         embed = discord.Embed(title="Member Banned", colour=discord.Colour.red())
         embed.add_field(name="Member", value=f"{user.mention} | {user}", inline=False)
-        embed.add_field(name="Banned At", value=discord.utils.format_dt(datetime.now(), style="F"), inline=False)
+        embed.add_field(name="Banned At", value=discord.utils.format_dt(discord.utils.utcnow(), style="F"), inline=False)
         await self.bot.mod_logs_channel.send(embed=embed)
 
     @commands.Cog.listener()
@@ -50,24 +49,37 @@ class Events(commands.Cog):
         if isinstance(message.channel, discord.DMChannel):
             embed = discord.Embed(title="DM Received")
             embed.add_field(name="Author", value=f"{message.author} ({message.author.mention})")
-            embed.add_field(name="Message", value=message.content, inline=False)
+            msg_content = message.content
+            if len(msg_content) > 1024:
+                msg_content = f"{msg_content[:1021]}..."
+            embed.add_field(name="Message", value=msg_content, inline=False)
             await self.bot.dm_logs_channel.send(embed=embed)
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        if isinstance(message.channel, discord.abc.GuildChannel) or isinstance(message.channel, discord.threads.Thread) and message.author.id != self.bot.user.id:
-            if not message.content or message.type == discord.MessageType.pins_add:
-                return
-            embed = discord.Embed(title="Message Deleted")
-            if message.reference is not None:
-                ref = message.reference.resolved
-                embed.add_field(name="Replied To", value=f"[{'@' if len(message.mentions) > 0 and ref.author in message.mentions else ''}{ref.author}]({ref.jump_url}) ({ref.author.id})")
-            if isinstance(message.channel, discord.threads.Thread):
-                embed.add_field(name="Thread Location", value=f"{message.channel.parent.mention} ({message.channel.parent.id})", inline=False)
-            embed.add_field(name="Author", value=f"{message.author} ({message.author.mention})")
-            embed.add_field(name="Channel", value=f"{message.channel.mention}")
-            embed.add_field(name="Message", value=message.content, inline=False)
-            await self.bot.deleted_logs_channel.send(embed=embed)
+        if message.author.id == self.bot.user.id:
+            return
+        if not isinstance(message.channel, (discord.abc.GuildChannel, discord.threads.Thread)):
+            return
+        if not message.content or message.type == discord.MessageType.pins_add:
+            return
+        embed = discord.Embed(title="Message Deleted")
+        if message.reference is not None:
+            ref = message.reference.resolved
+            if ref is not None:
+                replied_to = f"[{'@' if len(message.mentions) > 0 and ref.author in message.mentions else ''}{ref.author}]({ref.jump_url}) ({ref.author.id})"
+                if len(replied_to) > 1024:
+                    replied_to = f"{replied_to[:1021]}..."
+                embed.add_field(name="Replied To", value=replied_to)
+        if isinstance(message.channel, discord.threads.Thread):
+            embed.add_field(name="Thread Location", value=f"{message.channel.parent.mention} ({message.channel.parent.id})", inline=False)
+        embed.add_field(name="Author", value=f"{message.author} ({message.author.mention})")
+        embed.add_field(name="Channel", value=f"{message.channel.mention}")
+        msg_content = message.content
+        if len(msg_content) > 1024:
+            msg_content = f"{msg_content[:1021]}..."
+        embed.add_field(name="Message", value=msg_content, inline=False)
+        await self.bot.deleted_logs_channel.send(embed=embed)
 
 
 async def setup(bot):
