@@ -3,6 +3,7 @@ import functools
 import asyncio
 import os
 import sys
+import json
 from discord.ext import commands
 
 
@@ -73,6 +74,53 @@ class Utility(commands.Cog):
         if pre_head:
             restart_args.append(pre_head)
         os.execv(sys.executable, restart_args)
+
+    @commands.command(aliases=["configinfo"])
+    @commands.is_owner()
+    async def check_config(self, ctx):
+        """Checks data in the bot's config.json"""
+        with open("config.json", "r") as file:
+            loaded_config = json.load(file)
+        guild_data = loaded_config.get("guild_data", {}) if isinstance(loaded_config.get("guild_data", {}), dict) else {}
+        prefixes = loaded_config.get("prefix", [])
+        if not isinstance(prefixes, list):
+            prefixes = [prefixes]
+        prefix_text = ", ".join(f"`{prefix}`" for prefix in prefixes)
+        summary_lines = [
+            f"`is_beta`: {loaded_config.get('is_beta')}",
+            f"`prefix`: {prefix_text}",
+            f"`guild_id`: {guild_data.get('guild_id')}",
+        ]
+        channel_lines = []
+        role_lines = []
+        other_lines = []
+        for attrib in sorted(attr for attr in vars(self.bot) if attr.endswith("_channel") or attr.endswith("_role")):
+            value = getattr(self.bot, attrib, None)
+            if isinstance(value, discord.abc.GuildChannel):
+                channel_lines.append(f"{attrib}: {value.mention} ({value.id})")
+            elif isinstance(value, discord.Role):
+                role_lines.append(f"{attrib}: {value.mention} ({value.id})")
+            else:
+                other_lines.append(f"{attrib}: {value}")
+
+        embed = discord.Embed(title="Config Check")
+        embed.add_field(name="Summary", value="\n".join(summary_lines), inline=False)
+        if channel_lines:
+            channels_text = "\n".join(channel_lines)
+            if len(channels_text) > 1024:
+                channels_text = f"{channels_text[:1021]}..."
+            embed.add_field(name="Channels", value=channels_text, inline=True)
+        if role_lines:
+            roles_text = "\n".join(role_lines)
+            if len(roles_text) > 1024:
+                roles_text = f"{roles_text[:1021]}..."
+            embed.add_field(name="Roles", value=roles_text, inline=True)
+        if other_lines:
+            other_text = "\n".join(other_lines)
+            if len(other_text) > 1024:
+                other_text = f"{other_text[:1021]}..."
+            embed.add_field(name="Other", value=other_text, inline=False)
+        await ctx.send(embed=embed)
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Utility(bot))
