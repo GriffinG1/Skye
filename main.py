@@ -7,9 +7,10 @@ import traceback
 import asyncio
 import sys
 import platform
+import subprocess
 import urllib.request
 import config_handler
-from datetime import datetime
+from datetime import datetime, timezone
 from discord.ext import commands
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -140,6 +141,31 @@ def fetch_new_commits(last_commit):
     return commit_data
 
 
+def fetch_new_commits_local(last_commit):
+    output = subprocess.check_output(
+        ["git", "log", "--pretty=format:%H%x1f%an%x1f%at%x1f%s", f"{last_commit}..HEAD"],
+        text=True,
+        errors="replace",
+    ).strip()
+    if not output:
+        return []
+
+    commit_data = []
+    for line in output.splitlines():
+        parts = line.split("\x1f", 3)
+        if len(parts) != 4:
+            continue
+        sha, author, timestamp, message = parts
+        commit_data.append({
+            "author": author,
+            "date": datetime.fromtimestamp(int(timestamp), tz=timezone.utc),
+            "message": message,
+            "sha": sha,
+            "url": f"https://github.com/GriffinG1/Skye/commit/{sha}",
+        })
+    return commit_data
+
+
 @bot.event
 async def on_ready():
     global restart_channel_id, restart_last_commit, restart_mode
@@ -165,6 +191,11 @@ async def on_ready():
                     commit_data = await asyncio.to_thread(fetch_new_commits, restart_last_commit)
                 except Exception:
                     commit_data = []
+                if len(commit_data) == 0:
+                    try:
+                        commit_data = await asyncio.to_thread(fetch_new_commits_local, restart_last_commit)
+                    except Exception:
+                        commit_data = []
                 if len(commit_data) > 0:
                     embed = discord.Embed(title=f"New commit{'s' if len(commit_data) > 1 else ''} merged!", description="")
                     for commit in commit_data:
