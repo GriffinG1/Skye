@@ -45,7 +45,7 @@ class Utility(commands.Cog):
             return await ctx.send("Please specify a valid stream location. Valid options are: `twitch`, `tiktok`, `both`.")
         embed = discord.Embed(title=f"{ctx.author.display_name} is going live!", description=f"Check out the stream on [{stream_location.title()}]({url})!", colour=discord.Colour.purple())
         embed.set_thumbnail(url=str(ctx.author.display_avatar))
-        await self.bot.going_live_channel.send(embed=embed)
+        await self.bot.going_live_channel.send(content=self.bot.going_live_role.mention, embed=embed)
         await ctx.send(f"✅ Successfully sent a message to {self.bot.going_live_channel.mention}.")
 
     @commands.command()
