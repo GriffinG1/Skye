@@ -205,6 +205,8 @@ async def on_ready():
                     if len(embed.description) > 4096:
                         embed.description = f"{embed.description[:4093]}..."
                     await channel.send(embed=embed)
+                else:
+                    await channel.send(f"Gitpull restart completed, but no commits were found between `{restart_last_commit[:7]}` and `HEAD`.")
         restart_last_commit = None
         restart_mode = None
 
