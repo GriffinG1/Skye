@@ -73,7 +73,6 @@ class Utility(commands.Cog):
         restart_args = [sys.executable, os.path.abspath(sys.argv[0]), "gitpull", str(ctx.channel.id)]
         if pre_head:
             restart_args.append(pre_head)
-            await ctx.send(f"Testing message. Pre-HEAD commit: `{pre_head}`")
         os.execv(sys.executable, restart_args)
 
     @commands.command(aliases=["configinfo"])

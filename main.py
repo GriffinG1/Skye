@@ -187,15 +187,19 @@ async def on_ready():
         if channel is not None:
             await channel.send("Restarted!")
             if restart_mode == "gitpull" and restart_last_commit and not bot.is_beta:
+                api_error = None
+                local_error = None
                 try:
                     commit_data = await asyncio.to_thread(fetch_new_commits, restart_last_commit)
-                except Exception:
+                except Exception as exception:
                     commit_data = []
+                    api_error = f"{type(exception).__name__}: {exception}"
                 if len(commit_data) == 0:
                     try:
                         commit_data = await asyncio.to_thread(fetch_new_commits_local, restart_last_commit)
-                    except Exception:
+                    except Exception as exception:
                         commit_data = []
+                        local_error = f"{type(exception).__name__}: {exception}"
                 if len(commit_data) > 0:
                     embed = discord.Embed(title=f"New commit{'s' if len(commit_data) > 1 else ''} merged!", description="")
                     for commit in commit_data:
@@ -206,7 +210,22 @@ async def on_ready():
                         embed.description = f"{embed.description[:4093]}..."
                     await channel.send(embed=embed)
                 else:
-                    await channel.send(f"Gitpull restart completed, but no commits were found between `{restart_last_commit[:7]}` and `HEAD`.")
+                    head_sha = "unknown"
+                    try:
+                        head_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, errors="replace").strip()[:7]
+                    except Exception:
+                        pass
+                    details = []
+                    if api_error:
+                        details.append(f"API error: {api_error}")
+                    if local_error:
+                        details.append(f"Local error: {local_error}")
+                    details.append(f"cwd: {os.getcwd()}")
+                    details.append(f"HEAD: {head_sha}")
+                    details_text = "\n".join(details)
+                    if len(details_text) > 1200:
+                        details_text = f"{details_text[:1197]}..."
+                    await channel.send(f"Gitpull restart completed, but no commits were found between `{restart_last_commit[:7]}` and `HEAD`.\n```{details_text}```")
         restart_last_commit = None
         restart_mode = None
 
