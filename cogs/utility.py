@@ -109,12 +109,12 @@ class Utility(commands.Cog):
             channels_text = "\n".join(channel_lines)
             if len(channels_text) > 1024:
                 channels_text = f"{channels_text[:1021]}..."
-            embed.add_field(name="Channels", value=channels_text, inline=True)
+            embed.add_field(name=f"Channels ({len(channel_lines)})", value=channels_text, inline=True)
         if role_lines:
             roles_text = "\n".join(role_lines)
             if len(roles_text) > 1024:
                 roles_text = f"{roles_text[:1021]}..."
-            embed.add_field(name="Roles", value=roles_text, inline=True)
+            embed.add_field(name=f"Roles ({len(role_lines)})", value=roles_text, inline=True)
         if other_lines:
             other_text = "\n".join(other_lines)
             if len(other_text) > 1024:
