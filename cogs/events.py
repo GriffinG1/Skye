@@ -27,12 +27,39 @@ class Events(commands.Cog):
         await self.bot.join_logs_channel.send(embed=embed)
 
     @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        # Log member nickname changes
+        if before.nick != after.nick:
+            embed = discord.Embed(title="Member Nickname Changed", colour=discord.Colour.blue())
+            embed.add_field(name="Member", value=f"{after.mention} | {after}", inline=False)
+            embed.add_field(name="Before", value=f"`{before.nick if before.nick else 'None'}`", inline=False)
+            embed.add_field(name="After", value=f"`{after.nick if after.nick else 'None'}`", inline=False)
+            embed.add_field(name="Changed At", value=discord.utils.format_dt(discord.utils.utcnow(), style="F"), inline=False)
+            await self.bot.mod_logs_channel.send(embed=embed)
+        
+        # Log member role changes (likely triggered by Onboarding)
+        if before.roles != after.roles:
+            added_roles = [role for role in after.roles if role not in before.roles]
+            removed_roles = [role for role in before.roles if role not in after.roles]
+
+            if added_roles or removed_roles:
+                embed = discord.Embed(title="Member Roles Updated", colour=discord.Colour.blue())
+                embed.add_field(name="Member", value=f"{after.mention} | {after}", inline=False)
+                if added_roles:
+                    embed.add_field(name="Roles Added", value=", ".join([role.mention for role in added_roles]), inline=False)
+                if removed_roles:
+                    embed.add_field(name="Roles Removed", value=", ".join([role.mention for role in removed_roles]), inline=False)
+                embed.add_field(name="Updated At", value=discord.utils.format_dt(discord.utils.utcnow(), style="F"), inline=False)
+                await self.bot.mod_logs_channel.send(embed=embed)
+
+    @commands.Cog.listener()
     async def on_member_ban(self, guild, user):
         # This is very gross handling for me to be lazy and not pass attachments to the listener
         await asyncio.sleep(5)  # Wait to see if a ban is logged via command
-        async for message in self.bot.mod_logs_channel.history(limit=1):
+        async for message in self.bot.mod_logs_channel.history(limit=5):
             if message.author == self.bot.user and message.embeds:
-                if str(user) in message.embeds[0].description:
+                description = message.embeds[0].description
+                if description and str(user) in description:
                     return  # If the user is already in the log, don't log again
 
         # Log bans
