@@ -120,7 +120,7 @@ class Events(commands.Cog):
         if before.reference is not None:
             ref = before.reference.resolved
             if ref is not None:
-                replied_to = f"[{'@' if len(before.mentions) > 0 and ref.author in before.mentions else ''}{ref.author}]({ref.jump_url}) ({ref.author.id})"
+                replied_to = f"[{'@' if len(before.mentions) > 0 and ref.author in before.mentions else ''}{ref.author.name}]({ref.jump_url}) ({ref.author.mention})"
                 if len(replied_to) > 1024:
                     replied_to = f"{replied_to[:1021]}..."
                 embed.add_field(name="Replied To", value=replied_to)
