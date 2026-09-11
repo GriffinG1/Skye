@@ -4,6 +4,8 @@ import asyncio
 import os
 import sys
 import json
+import urllib.parse
+import urllib.request
 from discord.ext import commands
 
 
@@ -26,25 +28,63 @@ class Utility(commands.Cog):
                 return await ctx.send("You don't have permission to use this command.")
             await func(*args, **kwargs)
         return wrapper
+
+    def _fetch_oembed_metadata(self, target_url, provider):
+        encoded_url = urllib.parse.quote(target_url, safe=":/")
+        request_url = f"https://www.{provider}.com/oembed?url={encoded_url}"
+        headers = {"User-Agent": "SkyeBot/1.0"}
+        request = urllib.request.Request(request_url, headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=8) as response:
+                payload = json.load(response)
+            if isinstance(payload, dict) and payload:
+                return payload
+        except Exception:
+            pass
+        return {}
+
+    async def _get_stream_metadata(self, target_url, provider):
+        return await asyncio.to_thread(self._fetch_oembed_metadata, target_url, provider)
     
     @commands.command(aliases=["streamnotify", "golive"])
     @check_stream_perms
     async def going_live(self, ctx, *, stream_location: str):
         """Sends a message to the #going-live channel. Only works if you have send messages perms in that channel."""
         stream_location = stream_location.lower()
+        twitch_url = "https://www.twitch.tv/gpg5"
+        tiktok_url = "https://www.tiktok.com/@gpgrocker/live"
         if stream_location == "twitch":
-             url = "https://www.twitch.tv/gpg5"
+            metadata = await self._get_stream_metadata(twitch_url, "twitch.tv")
+            stream_title = metadata.get("title") if isinstance(metadata, dict) else None
+            thumb_url = metadata.get("thumbnail_url") if isinstance(metadata, dict) else None
+            embed = discord.Embed(title=f"{ctx.author.display_name} is going live!", description=f"Check out the stream on [Twitch]({twitch_url})!", colour=discord.Colour.purple())
+            if stream_title:
+                embed.add_field(name="Stream Title", value=stream_title[:1024], inline=False)
+            embed.set_thumbnail(url=thumb_url or str(ctx.author.display_avatar))
         elif stream_location == "tiktok":
-            url = "https://www.tiktok.com/@gpgrocker/live"
+            metadata = await self._get_stream_metadata(tiktok_url, "tiktok.com")
+            stream_title = metadata.get("title") if isinstance(metadata, dict) else None
+            thumb_url = metadata.get("thumbnail_url") if isinstance(metadata, dict) else None
+            embed = discord.Embed(title=f"{ctx.author.display_name} is going live!", description=f"Check out the stream on [TikTok]({tiktok_url})!", colour=discord.Colour.purple())
+            if stream_title:
+                embed.add_field(name="Stream Title", value=stream_title[:1024], inline=False)
+            embed.set_thumbnail(url=thumb_url or str(ctx.author.display_avatar))
         elif stream_location == "both":
-            embed = discord.Embed(title=f"{ctx.author.display_name} is going live!", description=f"Check out the stream on [Twitch](https://www.twitch.tv/gpg5) and [TikTok](https://www.tiktok.com/@gpgrocker/live)!", colour=discord.Colour.purple())
-            embed.set_thumbnail(url=str(ctx.author.display_avatar))
+            twitch_metadata = await self._get_stream_metadata(twitch_url, "twitch.tv")
+            stream_title = twitch_metadata.get("title") if isinstance(twitch_metadata, dict) else None
+            thumb_url = twitch_metadata.get("thumbnail_url") if isinstance(twitch_metadata, dict) else None
+            embed = discord.Embed(
+                title=f"{ctx.author.display_name} is going live!",
+                description=f"Check out the stream on [Twitch]({twitch_url}) and [TikTok]({tiktok_url})!",
+                colour=discord.Colour.purple(),
+            )
+            if stream_title:
+                embed.add_field(name="Stream Title", value=stream_title[:1024], inline=False)
+            embed.set_thumbnail(url=thumb_url or str(ctx.author.display_avatar))
             await self.bot.going_live_channel.send(embed=embed)
             return await ctx.send(f"✅ Successfully sent a message to {self.bot.going_live_channel.mention}.")
         else:
             return await ctx.send("Please specify a valid stream location. Valid options are: `twitch`, `tiktok`, `both`.")
-        embed = discord.Embed(title=f"{ctx.author.display_name} is going live!", description=f"Check out the stream on [{stream_location.title()}]({url})!", colour=discord.Colour.purple())
-        embed.set_thumbnail(url=str(ctx.author.display_avatar))
         await self.bot.going_live_channel.send(content=self.bot.going_live_role.mention, embed=embed)
         await ctx.send(f"✅ Successfully sent a message to {self.bot.going_live_channel.mention}.")
 
