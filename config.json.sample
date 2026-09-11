@@ -13,6 +13,7 @@
                 "mod_logs": 0,
                 "dm_logs": 0,
                 "deleted_logs": 0,
+                "edited_logs": 0,
                 "join_logs": 0
             }
         }
