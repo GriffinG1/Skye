@@ -108,6 +108,36 @@ class Events(commands.Cog):
         embed.add_field(name="Message", value=msg_content, inline=False)
         await self.bot.deleted_logs_channel.send(embed=embed)
 
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        if before.author.id == self.bot.user.id:
+            return
+        if not isinstance(before.channel, (discord.abc.GuildChannel, discord.threads.Thread)):
+            return
+        if before.content == after.content:
+            return
+        embed = discord.Embed(title="Message Edited")
+        if before.reference is not None:
+            ref = before.reference.resolved
+            if ref is not None:
+                replied_to = f"[{'@' if len(before.mentions) > 0 and ref.author in before.mentions else ''}{ref.author}]({ref.jump_url}) ({ref.author.id})"
+                if len(replied_to) > 1024:
+                    replied_to = f"{replied_to[:1021]}..."
+                embed.add_field(name="Replied To", value=replied_to)
+        if isinstance(before.channel, discord.threads.Thread):
+            embed.add_field(name="Thread Location", value=f"{before.channel.parent.mention} ({before.channel.parent.id})", inline=False)
+        embed.add_field(name="Author", value=f"{before.author} ({before.author.mention})")
+        embed.add_field(name="Channel", value=f"{before.channel.mention}")
+        before_content = before.content
+        after_content = after.content
+        if len(before_content) > 1024:
+            before_content = f"{before_content[:1021]}..."
+        if len(after_content) > 1024:
+            after_content = f"{after_content[:1021]}..."
+        embed.add_field(name="Before", value=before_content, inline=False)
+        embed.add_field(name="After", value=after_content, inline=False)
+        await self.bot.edited_logs_channel.send(embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(Events(bot))
