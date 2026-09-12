@@ -12,9 +12,24 @@ class Config():
             if type(value) is dict:
                 setattr(self, key, {})
                 attribs[key] = getattr(self, key)
-                self.convert_dict_to_attribs(value, getattr(self, key), append=("_channel" if key in ("channels", "log_channels") else "_role" if key == "roles" else None))
+                self.convert_dict_to_attribs(value, getattr(self, key), append=("_channel" if key in ("channels", "log_channels") else "_role" if key in ("roles", "public_notif_roles") else None))
             else:
                 if append:
                     key += append
                 setattr(self, key, value)
                 attribs[key] = getattr(self, key)
+
+    def get_public_notif_roles(self):
+        public_notif_roles = (
+            self.guild_data.get("roles", {}).get("public_notif_roles", {})
+        )
+        if not isinstance(public_notif_roles, dict):
+            return {}
+        return {
+            key: f"{key}_role" if not key.endswith("_role") else key
+            for key in public_notif_roles
+        }
+
+
+config = None
+

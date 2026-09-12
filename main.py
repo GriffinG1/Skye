@@ -24,7 +24,7 @@ if not os.path.exists("config.json"):
 
 with open("config.json") as conf:
     config = config_handler.Config(json.load(conf))
-
+    config_handler.config = config
 
 token = config.token
 prefix = config.prefix
@@ -111,7 +111,7 @@ def iterate_config_dict(parent_key, config_dict):
             iterate_config_dict(key, value)
         elif parent_key in ("channels", "log_channels"):
             setattr(bot, key, discord.utils.get(bot.guild.channels, id=value))
-        elif parent_key == "roles":
+        elif parent_key in ("roles", "public_notif_roles"):
             setattr(bot, key, discord.utils.get(bot.guild.roles, id=value))
 
 

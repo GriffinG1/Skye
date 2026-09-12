@@ -6,6 +6,7 @@ import sys
 import json
 import urllib.parse
 import urllib.request
+import config_handler
 from discord.ext import commands
 
 
@@ -45,6 +46,19 @@ class Utility(commands.Cog):
 
     async def _get_stream_metadata(self, target_url, provider):
         return await asyncio.to_thread(self._fetch_oembed_metadata, target_url, provider)
+
+    @property
+    def pingable_roles(self):
+        if config_handler.config is None:
+            return {}
+
+        roles = {}
+        for key, bot_attr in config_handler.config.get_public_notif_roles().items():
+            role_obj = getattr(self.bot, bot_attr, None)
+            if role_obj is not None:
+                short_key = key.split("_", 1)[0]
+                roles[short_key] = role_obj
+        return roles
     
     @commands.command(aliases=["streamnotify", "golive"])
     @check_stream_perms
@@ -161,6 +175,20 @@ class Utility(commands.Cog):
                 other_text = f"{other_text[:1021]}..."
             embed.add_field(name="Other", value=other_text, inline=False)
         await ctx.send(embed=embed)
+
+    @commands.command(aliases=['notify'])
+    async def safe_notify(self, ctx, role: str = None):
+        """Allows for safe pinging of a role without exposing role mentions to everyone"""
+        pingable_roles = self.pingable_roles
+        if role is None:
+            return await ctx.send(f"Please specify a role to ping. Valid options are: {', '.join(pingable_roles.keys())}", delete_after=10)
+        elif role.lower() not in pingable_roles:
+            return await ctx.send(f"Invalid role specified. Valid options are: {', '.join(pingable_roles.keys())}", delete_after=10)
+        await ctx.message.delete()
+        role_to_ping = pingable_roles[role.lower()]
+        if role_to_ping is None:
+            return await ctx.send(f"The role for '{role}' is not configured yet.")
+        await ctx.send(f"{ctx.author.mention}: {role_to_ping.mention}")
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Utility(bot))
