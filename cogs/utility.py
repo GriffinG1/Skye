@@ -71,7 +71,7 @@ class Utility(commands.Cog):
             metadata = await self._get_stream_metadata(twitch_url, "twitch.tv")
             stream_title = metadata.get("title") if isinstance(metadata, dict) else None
             thumb_url = metadata.get("thumbnail_url") if isinstance(metadata, dict) else None
-            embed = discord.Embed(title=f"{ctx.author.display_name} is going live!", description=f"Check out the stream on [Twitch]({twitch_url})!", colour=discord.Colour.purple())
+            embed = discord.Embed(title=f"{ctx.author.global_name} is going live!", description=f"Check out the stream on [Twitch]({twitch_url})!", colour=discord.Colour.purple())
             if stream_title:
                 embed.add_field(name="Stream Title", value=stream_title[:1024], inline=False)
             embed.set_thumbnail(url=thumb_url or str(ctx.author.display_avatar))
@@ -79,7 +79,7 @@ class Utility(commands.Cog):
             metadata = await self._get_stream_metadata(tiktok_url, "tiktok.com")
             stream_title = metadata.get("title") if isinstance(metadata, dict) else None
             thumb_url = metadata.get("thumbnail_url") if isinstance(metadata, dict) else None
-            embed = discord.Embed(title=f"{ctx.author.display_name} is going live!", description=f"Check out the stream on [TikTok]({tiktok_url})!", colour=discord.Colour.purple())
+            embed = discord.Embed(title=f"{ctx.author.global_name} is going live!", description=f"Check out the stream on [TikTok]({tiktok_url})!", colour=discord.Colour.purple())
             if stream_title:
                 embed.add_field(name="Stream Title", value=stream_title[:1024], inline=False)
             embed.set_thumbnail(url=thumb_url or str(ctx.author.display_avatar))
@@ -88,7 +88,7 @@ class Utility(commands.Cog):
             stream_title = twitch_metadata.get("title") if isinstance(twitch_metadata, dict) else None
             thumb_url = twitch_metadata.get("thumbnail_url") if isinstance(twitch_metadata, dict) else None
             embed = discord.Embed(
-                title=f"{ctx.author.display_name} is going live!",
+                title=f"{ctx.author.global_name} is going live!",
                 description=f"Check out the stream on [Twitch]({twitch_url}) and [TikTok]({tiktok_url})!",
                 colour=discord.Colour.purple(),
             )
